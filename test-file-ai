@@ -1,0 +1,66 @@
+import sounddevice as sd
+print(sd.query_devices())
+from scipy.io.wavfile import write
+import requests
+from playsound import playsound
+import threading
+
+# Audio recording parameters
+CHANNELS = 1
+RATE = 44100
+RECORD_SECONDS = 5  # Duration of each audio snippet
+AUDIO_FILE = "temp_recorded_audio.wav"
+
+# Hume AI API parameters
+api_key = ''
+url = 'https://api.hume.ai/v1/predict'
+headers = {'Authorization': f'Bearer {api_key}'}
+
+# Function to record and analyze audio
+def record_and_analyze():
+    while True:
+        record_audio()
+        emotions = analyze_emotion()
+        if emotions:
+            negative_emotions = ['stress', 'depression', 'anxiety', 'anger']
+            if any(emotion in emotions['detected_emotions'] for emotion in negative_emotions):
+                print("Negative emotion detected, playing relaxing audio.")
+                play_relaxing_audio()
+            else:
+                print("No negative emotions detected.")
+
+# Function to record audio
+def record_audio():
+    print("Recording...")
+    audio_data = sd.rec(int(RECORD_SECONDS * RATE), samplerate=RATE, channels=CHANNELS)
+    sd.wait()  # Wait until recording is finished
+    write(AUDIO_FILE, RATE, audio_data)  # Save as WAV file
+    print("Finished recording.")
+
+# Function to analyze emotion
+def analyze_emotion():
+    with open(AUDIO_FILE, 'rb') as file:
+        response = requests.post(url, headers=headers, data=file)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f'Error: {response.status_code}')
+            return None
+
+# Function to play audio
+def play_relaxing_audio():
+    # Replace 'relaxing_audio.mp3' with the path to the audio track you want to play
+    playsound('relaxing_audio.mp3')
+
+# Main function
+def main():
+    thread = threading.Thread(target=record_and_analyze)
+    thread.daemon = True  # Daemonize thread
+    thread.start()
+    thread.join()  # Wait for the recording thread to finish
+
+if __name__ == "__main__":
+    main()
+
+
+#this is the new version of the python code
